@@ -29,6 +29,8 @@ if not exist "installer\installer.py" (
     exit
 )
 
+echo [+] Tum dosyalar hazir
+
 echo [2/5] Eski installer garbage'a tasiniyor...
 if not exist "garbage" mkdir garbage
 if exist "HookEngine\HookEngine_Setup.exe" (
@@ -37,19 +39,11 @@ if exist "HookEngine\HookEngine_Setup.exe" (
 )
 
 echo [3/5] Installer derleniyor...
-python -m PyInstaller --onefile --windowed ^
-    --icon="ico\YoudHook.ico" ^
-    --name "HookEngine_Setup" ^
-    --distpath "HookEngine" ^
-    --workpath "garbage\build_installer" ^
-    --specpath "garbage" ^
-    --add-data "HookEngine\HookEngine.exe;." ^
-    --add-data "ico\YoudHook.ico;." ^
-    installer\installer.py
+python -m PyInstaller --onefile --windowed --icon="ico\YoudHook.ico" --name "HookEngine_Setup" --distpath "HookEngine" --workpath "garbage\build_installer" --add-data "HookEngine\HookEngine.exe;." --add-data "ico\YoudHook.ico;." installer\installer.py
 
 echo [4/5] Temizlik...
 if exist "garbage\build_installer" rmdir /s /q "garbage\build_installer" 2>nul
-if exist "garbage\HookEngine_Setup.spec" del /q "garbage\HookEngine_Setup.spec" 2>nul
+if exist "HookEngine_Setup.spec" move "HookEngine_Setup.spec" "garbage\" >nul 2>nul
 
 echo [5/5] Tamamlandi!
 echo.
