@@ -9,7 +9,7 @@ FIX v3.1:
 - save_ht_file v3 format (HTTable.save ile aynı şema)
 - import time temizlendi
 - Refresh ve scan işlemleri Tk-safe
-- PATH FIX: src/ + others/ sys.path'e ekleniyor
+- PATH FIX: src/ + others/ sys.path'e ekleniyor (frozen modda sys._MEIPASS)
 - ICON FIX: ico/ ve others/ico/ her ikisi de deneniyor
 """
 
@@ -64,32 +64,37 @@ if not _is_admin():
 
 
 # ==================== PATH FIX ====================
-# Proje yapısı:
+# Proje yapısı (development):
 #   HookTool/
-#   ├── main.py              <- buradan çalıştırılıyor
-#   ├── src/                 <- core, hook, ht, injector, installer (, report)
-#   ├── others/              <- report (taşınmadıysa), bat, scripts
-#   └── ico/ veya others/ico <- ikon dosyaları
+#   ├── main.py
+#   ├── src/       (core, hook, ht, injector, installer)
+#   ├── others/    (report, bat, scripts, ico, garbage, hook_results)
+#   └── ico/
 #
-# Bu blok, alt klasörleri Python'un arama yoluna ekler —
-# böylece `from core.X import Y` gibi import'lar çalışır.
-_HERE = os.path.dirname(os.path.abspath(__file__))
+# PyInstaller --onefile ile paketlendiğinde kaynaklar `sys._MEIPASS`
+# altında açılır. Aşağıdaki blok her iki durumu da kapsar.
+if getattr(sys, 'frozen', False):
+    _HERE = getattr(sys, '_MEIPASS',
+                    os.path.dirname(os.path.abspath(sys.executable)))
+else:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Import için sys.path'e eklenecek klasörler
+# sys.path'e eklenecek klasörler — sırayla denenir
 _IMPORT_PATHS = [
-    os.path.join(_HERE, "src"),                    # core, hook, ht, injector, installer
-    os.path.join(_HERE, "others"),                 # report (taşınmadıysa)
-    os.path.join(_HERE, "others", "report"),       # report paketi (fallback)
+    os.path.join(_HERE, "src"),                       # core, hook, ht, injector, installer
+    os.path.join(_HERE, "others"),                    # report paketi
+    os.path.join(_HERE, "others", "report"),          # report alt paketi
 ]
 for _p in _IMPORT_PATHS:
     if os.path.isdir(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
-# İkon aramak için kullanılacak klasörler (sırayla denenir)
+# İkon arama klasörleri
 _ICON_DIRS = [
     os.path.join(_HERE, "ico"),
     os.path.join(_HERE, "others", "ico"),
     os.path.join(_HERE, "icons"),
+    os.path.join(_HERE, ""),
 ]
 # ==================== END PATH FIX ====================
 
@@ -292,24 +297,21 @@ class Theme:
 
 # ==================== HELPERS ====================
 def get_icon_path(vip=False):
-    """
-    İkon dosyasını bul. Öncelik sırası:
-      1. exe/dosya yanındaki ico/
-      2. others/ico/
-      3. icons/
-    """
+    """İkon dosyasını bul — frozen ve dev modda çalışır."""
     name = "YoudHookVIP.ico" if vip else "YoudHook.ico"
     try:
-        # frozen (PyInstaller) ise exe'nin yanına bak
         if hasattr(sys, 'frozen'):
             exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-            for d in (exe_dir, os.path.join(exe_dir, "ico"),
-                      os.path.join(exe_dir, "others", "ico")):
+            for d in (exe_dir,
+                      os.path.join(exe_dir, "ico"),
+                      os.path.join(exe_dir, "others", "ico"),
+                      getattr(sys, '_MEIPASS', '')):
+                if not d:
+                    continue
                 p = os.path.join(d, name)
                 if os.path.exists(p):
                     return p
 
-        # Geliştirme modunda _ICON_DIRS listesini kullan
         for d in _ICON_DIRS:
             p = os.path.join(d, name)
             if os.path.exists(p):

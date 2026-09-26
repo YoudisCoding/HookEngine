@@ -1,48 +1,63 @@
 @echo off
-cd /d "%~dp0\.."
+cd /d "%~dp0\..\.."
+color 0A
 
 echo ========================================
-echo HookEngine v3.0 - BUILD
+echo   HookEngine v3.1 - BUILD
 echo ========================================
 echo.
-
-echo [0/7] Current directory: %CD%
+echo [0/8] Root: %CD%
 echo.
 
-echo [1/7] Installing dependencies...
+REM ==================== 1) DEPS ====================
+echo [1/8] Installing dependencies...
 pip install -r requirements.txt 2>nul
 
-echo [2/7] Checking icon files...
-if exist "ico\YoudHook.ico" (
-    echo [+] YoudHook.ico found
-) else (
-    echo [-] YoudHook.ico NOT FOUND - put it in ico\ folder!
+REM ==================== 2) ICON CHECK ====================
+echo [2/8] Checking icon files...
+if not exist "ico\YoudHook.ico" (
+    echo [-] ico\YoudHook.ico NOT FOUND
     pause
-    exit /b
+    exit /b 1
 )
+echo [+] YoudHook.ico found
 
 set VIP_ICON_ARG=
 if exist "ico\YoudHookVIP.ico" (
     echo [+] YoudHookVIP.ico found
     set VIP_ICON_ARG=--add-data "ico\YoudHookVIP.ico;ico"
 ) else (
-    echo [!] YoudHookVIP.ico not found - VIP logo will use default
+    echo [!] YoudHookVIP.ico not found
 )
 
-echo [3/7] Moving old build to garbage...
-if not exist "garbage" mkdir garbage
-if exist "HookEngine" (
-    if exist "garbage\HookEngine_old" rmdir /s /q "garbage\HookEngine_old"
-    move "HookEngine" "garbage\HookEngine_old" >nul 2>nul
-)
-if exist "HookEngine.spec" move "HookEngine.spec" "garbage\" >nul 2>nul
+REM ==================== 3) CLEAN OLD ====================
+echo [3/8] Moving old build to garbage...
+if not exist "others\garbage" mkdir "others\garbage"
+if exist "HookEngine" rmdir /s /q "HookEngine"
+if exist "HookEngine.spec" del /q "HookEngine.spec"
 
-echo [4/7] Building with PyInstaller...
+REM ==================== 4) PRE-CHECK ====================
+echo [4/8] Pre-check...
+if not exist "main.py" (
+    echo [-] main.py NOT FOUND
+    pause
+    exit /b 1
+)
+if not exist "src\core" (
+    echo [-] src\core NOT FOUND
+    pause
+    exit /b 1
+)
+
+REM ==================== 5) BUILD ====================
+echo [5/8] Building with PyInstaller...
 python -m PyInstaller --onefile --windowed ^
   --icon="ico\YoudHook.ico" ^
   --name "HookEngine" ^
   --distpath "HookEngine" ^
-  --workpath "garbage\build" ^
+  --workpath "others\garbage\build" ^
+  --paths "src" ^
+  --paths "others" ^
   --collect-all lupa ^
   --collect-all keystone ^
   --collect-all PIL ^
@@ -53,32 +68,47 @@ python -m PyInstaller --onefile --windowed ^
   --hidden-import PIL.Image ^
   --hidden-import PIL.ImageTk ^
   --hidden-import PIL.ImageDraw ^
-  --add-data "ico\YoudHook.ico;ico" ^
+  --hidden-import core.lang ^
+  --hidden-import core.memory_engine ^
+  --hidden-import core.process_manager ^
+  --hidden-import core.value_scanner ^
+  --hidden-import core.fast_scanner ^
+  --hidden-import core.vip ^
+  --hidden-import hook.hook_scanner ^
+  --hidden-import hook.who_writes ^
+  --hidden-import hook.who_writes_ui ^
+  --hidden-import hook.who_writes_veh ^
+  --hidden-import ht.ht_v3 ^
+  --hidden-import ht.ht_resolver ^
+  --hidden-import ht.ht_engine ^
+  --hidden-import ht.ht_lua ^
+  --hidden-import ht.ht_injector ^
+  --hidden-import ht.ht_ui_v3 ^
+  --hidden-import ht.ht_editor ^
+  --hidden-import injector.dll_injector ^
+  --hidden-import report.report_generator ^
+  --add-data "ico;ico" ^
+  --add-data "src;src" ^
   %VIP_ICON_ARG% ^
-  --add-data "core;core" ^
-  --add-data "hook;hook" ^
-  --add-data "ht;ht" ^
-  --add-data "injector;injector" ^
-  --add-data "report;report" ^
-  --add-data "kernel;kernel" ^
   main.py
 
-echo [5/7] Cleaning up...
-if exist "garbage\build" rmdir /s /q "garbage\build" 2>nul
-if exist "HookEngine.spec" move "HookEngine.spec" "garbage\" >nul 2>nul
+REM ==================== 6) CLEANUP ====================
+echo [6/8] Cleaning up...
+if exist "others\garbage\build" rmdir /s /q "others\garbage\build" 2>nul
+if exist "HookEngine.spec" move "HookEngine.spec" "others\garbage\" >nul 2>nul
 
-echo [6/7] Checking output...
+REM ==================== 7) VERIFY ====================
+echo [7/8] Checking output...
 if exist "HookEngine\HookEngine.exe" (
     echo [+] Build successful!
     echo [+] Output: HookEngine\HookEngine.exe
 ) else (
-    echo [-] Build FAILED - no exe created
-    echo [!] Try running with --console to see errors
+    echo [-] Build FAILED
 )
 
-echo [7/7] Done.
+echo [8/8] Done.
 echo.
 echo ========================================
-echo EXE: HookEngine\HookEngine.exe
+echo   EXE: HookEngine\HookEngine.exe
 echo ========================================
 pause
